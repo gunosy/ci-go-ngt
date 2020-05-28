@@ -35,7 +35,7 @@ jobs:
       - setup_remote_docker
       - run:
           name: Login to dockerhub
-          command: docker login -u "$DOCKER_HUB_USER" -p "$DOCKER_HUB_PASSWORD"
+          command: docker login -u "$DOCKERHUB_USERNAME" -p "$DOCKERHUB_PASSWORD"
       - run:
           name: Build and push docker image
           command: |
@@ -45,18 +45,9 @@ jobs:
             done
 
 workflows:
-  version: 2
-  workflow:
-    triggers:
-      - schedule:
-          cron: "0 0 * * 2,5"
-          filters:
-            branches:
-              only:
-                - master
+  development-build:
     jobs:
-      - build_and_push_image_to_dockerhub:
+      - build_and_push:
           filters:
             branches:
-              only:
-                - master
+              only: master
