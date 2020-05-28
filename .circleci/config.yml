@@ -45,7 +45,7 @@ jobs:
             done
 
 workflows:
-  development-build:
+  build:
     jobs:
       - build_and_push:
           filters:
