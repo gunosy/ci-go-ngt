@@ -39,7 +39,7 @@ jobs:
       - run:
           name: Build and push docker image
           command: |
-            for tag in $( gfind . -follow -name Dockerfile | sed "s/^.\/\(.*\)\/Dockerfile/\1/g" ); do
+            for tag in $( find . -follow -name Dockerfile | sed "s/^.\/\(.*\)\/Dockerfile/\1/g" ); do
               docker build -f ${tag}/Dockerfile . -t gunosy/ci-go-ngt:${tag}
               docker push gunosy/ci-go-ngt:${tag}
             done
