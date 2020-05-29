@@ -14,5 +14,6 @@ RUN apt update \
   && cmake .. \
   && make \
   && make install \
+  && ldconfig \
   && cd /go \
   && rm -rf /ngt
