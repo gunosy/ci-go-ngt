@@ -1,6 +1,6 @@
 FROM gunosy/ci-go:1.13
 
-ENV NGT_VERSION=1.11.6
+ENV NGT_VERSION=1.12.1
 
 RUN apt update \
   && apt install -y --no-install-recommends cmake \
