@@ -11,7 +11,7 @@ RUN apt update \
   && tar xvf /ngt/v${NGT_VERSION}.tar.gz -C /ngt \
   && mkdir /ngt/NGT-${NGT_VERSION}/build \
   && cd /ngt/NGT-${NGT_VERSION}/build \
-  && cmake -DNGT_SHARED_MEMORY_ALLOCATOR=ON .. \
+  && cmake .. \
   && make \
   && make install \
   && ldconfig \
