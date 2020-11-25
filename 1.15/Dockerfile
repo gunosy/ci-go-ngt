@@ -1,4 +1,4 @@
-FROM gunosy/ci-go:1.14
+FROM gunosy/ci-go:1.15
 
 ENV NGT_VERSION=1.12.1
 
