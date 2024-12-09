@@ -2,7 +2,7 @@ FROM gunosy/ci-go:1.23
 
 ENV NGT_VERSION=1.12.1
 
-RUN apt update \
+RUN apt --allow-releaseinfo-change update \
   && apt install -y --no-install-recommends cmake \
   && apt clean \
   && rm -rf /var/lib/apt/lists/* \
