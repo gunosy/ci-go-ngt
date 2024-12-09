@@ -1,4 +1,4 @@
-FROM gunosy/ci-go:1.23
+FROM golang:1.23
 
 ENV NGT_VERSION=1.12.1
 
