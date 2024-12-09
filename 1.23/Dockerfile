@@ -1,9 +1,10 @@
 FROM golang:1.23
 
 ENV NGT_VERSION=1.12.1
+ENV GOLANGCI_LINT_VERSION=v1.62.2
 
 RUN apt --allow-releaseinfo-change update \
-  && apt install -y --no-install-recommends cmake \
+  && apt install -y --no-install-recommends cmake make libssl-dev libghc-zlib-dev libcurl4-gnutls-dev libexpat1-dev gettext unzip git \
   && apt clean \
   && rm -rf /var/lib/apt/lists/* \
   && mkdir -p /ngt \
@@ -17,3 +18,5 @@ RUN apt --allow-releaseinfo-change update \
   && ldconfig \
   && cd /go \
   && rm -rf /ngt
+
+RUN GO111MODULE=on go get github.com/golangci/golangci-lint/cmd/golangci-lint@${GOLANGCI_LINT_VERSION}
