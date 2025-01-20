@@ -37,7 +37,8 @@ jobs:
           name: Build and push docker image
           command: |
             git fetch origin master
-            git diff --name-only $(git merge-base origin/master HEAD) | grep "Dockerfile"
+            git diff
+            git merge-base origin/master HEAD
 
 
 workflows:
