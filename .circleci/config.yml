@@ -40,10 +40,8 @@ jobs:
           name: Get merge base
           command: git merge-base origin/master HEAD
       - run:
-          name: Check changes
-          command: git diff --name-only $(git merge-base origin/master HEAD) | grep "Dockerfile"
-
-
+          name: List changed files
+          command: git log -m -1 --name-only --pretty="format:" | grep "Dockerfile"
 
 workflows:
   build:
