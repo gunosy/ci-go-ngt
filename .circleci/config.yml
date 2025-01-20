@@ -31,17 +31,36 @@ jobs:
   build_and_push:
     executor: docker
     steps:
-      - checkout
+       # 1) shallow clone をやめて全履歴を取得できるようにする
+      - checkout:
+          fetch-depth: 0
+      # 2) Docker を使うためのセットアップ
       - setup_remote_docker
+      # 3) Docker Hub にログイン
       - run:
           name: Login to dockerhub
           command: docker login -u "$DOCKERHUB_USERNAME" -p "$DOCKERHUB_PASSWORD"
+      # 4) main ブランチを fetch して、変更のあった Dockerfile のみをビルド＆プッシュする
       - run:
           name: Build and push docker image
           command: |
-            for tag in $( find . -follow -name Dockerfile | sed "s/^.\/\(.*\)\/Dockerfile/\1/g" ); do
-              docker build -f ${tag}/Dockerfile . -t gunosy/ci-go-ngt:${tag}
-              docker push gunosy/ci-go-ngt:${tag}
+            git fetch origin master
+
+            CHANGED_FILES=$(git diff --name-only origin/master..HEAD)
+            DOCKERFILES=$(echo "$CHANGED_FILES" | grep "Dockerfile" || true)
+
+            if [ -z "$DOCKERFILES" ]; then
+              echo "No Dockerfile changes detected. Skipping build."
+              exit 0
+            fi
+
+            echo "Changed Dockerfiles: ${DOCKERFILES}"
+
+            for FILE in $DOCKERFILES; do
+              TAG=$(dirname "$FILE")
+              echo "Building ${TAG}..."
+              docker build -f $FILE . -t gunosy/ci-go-ngt:${TAG}
+              docker push gunosy/ci-go-ngt:${TAG}
             done
 
 workflows:
