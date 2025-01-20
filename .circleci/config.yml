@@ -39,9 +39,22 @@ jobs:
       - run:
           name: Build and push docker image
           command: |
-            for tag in $( find . -follow -name Dockerfile | sed "s/^.\/\(.*\)\/Dockerfile/\1/g" ); do
-              docker build -f ${tag}/Dockerfile . -t gunosy/ci-go-ngt:${tag}
-              docker push gunosy/ci-go-ngt:${tag}
+            # merge-baseを使用してベースブランチからの変更を検出し、パスを整形
+            CHANGED_TAGS=$(git diff --name-only $(git merge-base origin/master HEAD) | grep "Dockerfile" | sed "s/\(.*\)\/Dockerfile/\1/g")
+
+            if [ -z "$CHANGED_TAGS" ]; then
+              echo "No Dockerfile changes detected. Skipping build."
+              exit 0
+            fi
+            
+            echo "Building tags: ${CHANGED_TAGS}"
+            
+            for tag in $CHANGED_TAGS; do
+              if [ -f "${tag}/Dockerfile" ]; then
+                echo "Building ${tag}..."
+                docker build -f ${tag}/Dockerfile . -t gunosy/ci-go-ngt:${tag}
+                docker push gunosy/ci-go-ngt:${tag}
+              fi
             done
 
 workflows:
