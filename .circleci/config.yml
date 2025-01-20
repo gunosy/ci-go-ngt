@@ -72,3 +72,6 @@ workflows:
   build:
     jobs:
       - build_and_push:
+          filters:
+            branches:
+              ignore: []
