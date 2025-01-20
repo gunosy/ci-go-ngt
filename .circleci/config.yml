@@ -31,54 +31,37 @@ jobs:
   build_and_push:
     executor: docker
     steps:
-      # 1) shallow clone をやめて全履歴を取得できるようにする
+       # 1) shallow clone をやめて全履歴を取得できるようにする
       - checkout:
           fetch-depth: 0
-
       # 2) Docker を使うためのセットアップ
       - setup_remote_docker
-
-      # 3) Docker Hub にログイン (環境変数 DOCKERHUB_USERNAME, DOCKERHUB_PASSWORD が必要)
+      # 3) Docker Hub にログイン
       - run:
-          name: Login to DockerHub
+          name: Login to dockerhub
           command: docker login -u "$DOCKERHUB_USERNAME" -p "$DOCKERHUB_PASSWORD"
-
       # 4) main ブランチを fetch して、変更のあった Dockerfile のみをビルド＆プッシュする
       - run:
-          name: Diff Dockerfiles and build/push
+          name: Build and push docker image
           command: |
-            # main ブランチがなければ fetch する
+            # merge-baseを使用してベースブランチからの変更を検出し、パスを整形
             git fetch origin master
 
-            # main..HEAD の差分ファイルを取得
-            CHANGED_FILES=$(git diff --name-only origin/master..HEAD)
-            echo "Changed files:"
-            echo "$CHANGED_FILES"
+            CHANGED_TAGS=$(git diff --name-only $(git merge-base origin/master HEAD) | grep "Dockerfile" | sed "s/\(.*\)\/Dockerfile/\1/g")
 
-            # 変更ファイルの中から Dockerfile だけをフィルタ
-            DOCKERFILES=$(echo "$CHANGED_FILES" | grep "Dockerfile" || true)
-
-            # もし Dockerfile の変更がなければスキップ
-            if [ -z "$DOCKERFILES" ]; then
-              echo "No Dockerfile changed. Skipping build and push."
+            if [ -z "$CHANGED_TAGS" ]; then
+              echo "No Dockerfile changes detected. Skipping build."
               exit 0
             fi
-
-            echo "Changed Dockerfiles:"
-            echo "$DOCKERFILES"
-
-            # Dockerfile があるフォルダごとにビルド＆プッシュ
-            for FILE in $DOCKERFILES; do
-              # ディレクトリ名をイメージのタグとして使用
-              TAG=$(dirname "$FILE")
-              # 必要に応じて、TAG をさらに加工してもよい
-              echo "Building image for directory: $TAG"
-
-              # Docker build
-              docker build -f $FILE . -t gunosy/ci-go-ngt:${TAG}
-
-              # Docker push
-              docker push gunosy/ci-go-ngt:${TAG}
+            
+            echo "Building tags: ${CHANGED_TAGS}"
+            
+            for tag in $CHANGED_TAGS; do
+              if [ -f "${tag}/Dockerfile" ]; then
+                echo "Building ${tag}..."
+                docker build -f ${tag}/Dockerfile . -t gunosy/ci-go-ngt:${tag}
+                docker push gunosy/ci-go-ngt:${tag}
+              fi
             done
 
 workflows:
@@ -87,4 +70,5 @@ workflows:
       - build_and_push:
           filters:
             branches:
-              ignore: []
+              only:
+                - master
