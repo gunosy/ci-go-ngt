@@ -44,24 +44,23 @@ jobs:
       - run:
           name: Build and push docker image
           command: |
-            # merge-baseを使用してベースブランチからの変更を検出し、パスを整形
             git fetch origin master
 
-            CHANGED_TAGS=$(git diff --name-only $(git merge-base origin/master HEAD) | grep "Dockerfile" | sed "s/\(.*\)\/Dockerfile/\1/g")
+            CHANGED_FILES=$(git diff --name-only origin/master..HEAD)
+            DOCKERFILES=$(echo "$CHANGED_FILES" | grep "Dockerfile" || true)
 
-            if [ -z "$CHANGED_TAGS" ]; then
+            if [ -z "$DOCKERFILES" ]; then
               echo "No Dockerfile changes detected. Skipping build."
               exit 0
             fi
-            
-            echo "Building tags: ${CHANGED_TAGS}"
-            
-            for tag in $CHANGED_TAGS; do
-              if [ -f "${tag}/Dockerfile" ]; then
-                echo "Building ${tag}..."
-                docker build -f ${tag}/Dockerfile . -t gunosy/ci-go-ngt:${tag}
-                docker push gunosy/ci-go-ngt:${tag}
-              fi
+
+            echo "Changed Dockerfiles: ${DOCKERFILES}"
+
+            for FILE in $DOCKERFILES; do
+              TAG=$(dirname "$FILE")
+              echo "Building ${TAG}..."
+              docker build -f $FILE . -t gunosy/ci-go-ngt:${TAG}
+              docker push gunosy/ci-go-ngt:${TAG}
             done
 
 workflows:
