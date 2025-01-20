@@ -34,52 +34,11 @@ jobs:
       - checkout
       - setup_remote_docker
       - run:
-          name: Debug information
-          command: |
-            echo "Current branch:"
-            git branch
-            echo "Remote branches:"
-            git branch -r
-            echo "Git status:"
-            git status
-      - run:
-          name: Login to dockerhub
-          command: docker login -u "$DOCKERHUB_USERNAME" -p "$DOCKERHUB_PASSWORD"
-      - run:
           name: Build and push docker image
           command: |
-            echo "Starting fetch..."
-            git fetch origin master || { echo "Fetch failed with status $?"; exit 1; }
-            
-            echo "After fetch - Remote branches:"
-            git branch -r || { echo "Branch list failed with status $?"; exit 1; }
-            
-            echo "Calculating merge-base..."
-            merge_base=$(git merge-base origin/master HEAD) || { echo "Merge-base failed with status $?"; exit 1; }
-            echo "Merge base: ${merge_base}"
-            
-            echo "Getting diff..."
-            git diff --name-only ${merge_base} || { echo "Diff failed with status $?"; exit 1; }
-            
-            echo "Processing changes..."
-            CHANGED_TAGS=$(git diff --name-only ${merge_base} | grep "Dockerfile" | sed "s/\(.*\)\/Dockerfile/\1/g") || { echo "Change detection failed with status $?"; exit 1; }
-            
-            echo "Changed tags: ${CHANGED_TAGS}"
-            
-            if [ -z "$CHANGED_TAGS" ]; then
-              echo "No Dockerfile changes detected. Skipping build."
-              exit 0
-            fi
-            
-            echo "Building tags: ${CHANGED_TAGS}"
-            
-            for tag in $CHANGED_TAGS; do
-              if [ -f "${tag}/Dockerfile" ]; then
-                echo "Building ${tag}..."
-                docker build -f ${tag}/Dockerfile . -t gunosy/ci-go-ngt:${tag}
-                docker push gunosy/ci-go-ngt:${tag}
-              fi
-            done
+            git fetch origin master
+            git diff --name-only $(git merge-base origin/master HEAD) | grep "Dockerfile"
+
 
 workflows:
   build:
