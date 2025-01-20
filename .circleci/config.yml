@@ -48,10 +48,10 @@ jobs:
           name: Diff Dockerfiles and build/push
           command: |
             # main ブランチがなければ fetch する
-            git fetch origin main
+            git fetch origin master
 
             # main..HEAD の差分ファイルを取得
-            CHANGED_FILES=$(git diff --name-only origin/main..HEAD)
+            CHANGED_FILES=$(git diff --name-only origin/master..HEAD)
             echo "Changed files:"
             echo "$CHANGED_FILES"
 
