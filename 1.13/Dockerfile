@@ -11,7 +11,7 @@ ENV GOLANGCI_LINT_VERSION=v1.25.1
 ENV NGT_VERSION=1.12.1
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends build-essential ca-certificates cmake git wget \
+  && apt-get install -y --no-install-recommends build-essential ca-certificates cmake curl git wget \
   && update-ca-certificates --fresh \
   && rm -rf /var/lib/apt/lists/* \
   && mkdir -p /go /ngt \

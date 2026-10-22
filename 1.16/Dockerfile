@@ -13,7 +13,7 @@ ENV NGT_VERSION=1.12.1
 ENV GOLANGCI_LINT_VERSION=v1.27.0
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends build-essential ca-certificates cmake gettext git libcurl4-gnutls-dev libexpat1-dev libghc-zlib-dev libssl-dev unzip wget \
+  && apt-get install -y --no-install-recommends build-essential ca-certificates cmake curl gettext git libcurl4-gnutls-dev libexpat1-dev libghc-zlib-dev libssl-dev unzip wget \
   && update-ca-certificates --fresh \
   && rm -rf /var/lib/apt/lists/* \
   && mkdir -p /go /ngt \
