@@ -1,0 +1,78 @@
+name: Build image PRs
+
+on:
+  pull_request:
+    branches:
+      - master
+    paths:
+      - 1.13/Dockerfile
+      - 1.14/Dockerfile
+      - 1.15/Dockerfile
+      - 1.16/Dockerfile
+      - 1.23/Dockerfile
+      - latest/Dockerfile
+      - .github/workflows/build-pr.yml
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - dockerfile: 1.13/Dockerfile
+            tag: 1.13
+            go_version_prefix: go1.13.15
+          - dockerfile: 1.14/Dockerfile
+            tag: 1.14
+            go_version_prefix: go1.14.12
+          - dockerfile: 1.15/Dockerfile
+            tag: 1.15
+            go_version_prefix: go1.15.5
+          - dockerfile: 1.16/Dockerfile
+            tag: 1.16
+            go_version_prefix: go1.15.15
+          - dockerfile: 1.23/Dockerfile
+            tag: 1.23
+            go_version_prefix: go1.23.
+          - dockerfile: latest/Dockerfile
+            tag: latest
+            go_version_prefix: go1.23.
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build without publishing
+        run: docker build --pull -f "${{ matrix.dockerfile }}" -t "ci-go-ngt:${{ matrix.tag }}" .
+      - name: Verify toolchain and NGT runtime
+        env:
+          IMAGE: ci-go-ngt:${{ matrix.tag }}
+          GO_VERSION_PREFIX: ${{ matrix.go_version_prefix }}
+        run: |
+          go_version="$(docker run --rm "$IMAGE" go version)"
+          grep -Fq "$GO_VERSION_PREFIX" <<< "$go_version"
+          docker run --rm "$IMAGE" sh -c 'printf "package main\nfunc main() {}\n" > /tmp/main.go && go build -o /tmp/main /tmp/main.go && /tmp/main && test -x /usr/local/bin/ngt && test -f /usr/local/lib/libngt.so'
+      - name: Verify CA anchors in the built image
+        env:
+          IMAGE: ci-go-ngt:${{ matrix.tag }}
+        run: |
+          container="$(docker create "$IMAGE")"
+          trap 'docker rm -f "$container" >/dev/null 2>&1 || true' EXIT
+          docker cp "$container:/etc/ssl/certs/ca-certificates.crt" "$RUNNER_TEMP/ca-certificates.crt"
+          docker rm "$container"
+          subjects="$(openssl crl2pkcs7 -nocrl -certfile "$RUNNER_TEMP/ca-certificates.crt" | openssl pkcs7 -print_certs -noout)"
+
+          for compromised in "emSign ECC Root CA - G3" "Comodo AAA Services"; do
+            if grep -Fq "$compromised" <<< "$subjects"; then
+              echo "Compromised trust anchor still present: $compromised"
+              exit 1
+            fi
+          done
+
+          for retained in "emSign Root CA - G1" "emSign Root CA - C1" "emSign ECC Root CA - C3"; do
+            if ! grep -Fq "$retained" <<< "$subjects"; then
+              echo "Expected unaffected trust anchor missing: $retained"
+              exit 1
+            fi
+          done
