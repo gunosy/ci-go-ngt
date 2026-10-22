@@ -2,6 +2,7 @@ FROM gunosy/ci-go:1.13 AS go-toolchain
 
 FROM debian:bookworm-slim
 COPY --from=go-toolchain /usr/local/go /usr/local/go
+COPY --from=go-toolchain /go/bin/golangci-lint /go/bin/golangci-lint
 
 ENV GOPATH=/go
 ENV PATH=/go/bin:/usr/local/go/bin:$PATH

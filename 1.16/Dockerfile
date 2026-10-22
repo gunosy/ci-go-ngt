@@ -1,7 +1,10 @@
 FROM golang:1.15 AS go-toolchain
 
+FROM gunosy/ci-go:1.15 AS golangci-lint-tool
+
 FROM debian:bookworm-slim
 COPY --from=go-toolchain /usr/local/go /usr/local/go
+COPY --from=golangci-lint-tool /go/bin/golangci-lint /go/bin/golangci-lint
 
 ENV GOPATH=/go
 ENV PATH=/go/bin:/usr/local/go/bin:$PATH
