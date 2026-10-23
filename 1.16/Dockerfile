@@ -15,6 +15,7 @@ ENV GOLANGCI_LINT_VERSION=v1.27.0
 RUN apt-get update \
   && apt-get install -y --no-install-recommends build-essential ca-certificates cmake curl gettext git libcurl4-gnutls-dev libexpat1-dev libghc-zlib-dev libssl-dev unzip wget \
   && update-ca-certificates --fresh \
+  && dpkg --compare-versions "$(dpkg-query -W -f='${Version}' ca-certificates)" ge '20250419~deb12u2' \
   && rm -rf /var/lib/apt/lists/* \
   && mkdir -p /go /ngt \
   && wget -P /ngt https://github.com/yahoojapan/NGT/archive/v${NGT_VERSION}.tar.gz \
