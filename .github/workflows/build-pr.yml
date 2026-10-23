@@ -63,6 +63,7 @@ jobs:
           grep -Fq "has version $GOLANGCI_LINT_VERSION" <<< "$linter_version"
           curl_version="$(docker run --rm "$IMAGE" curl --version)"
           grep -Eq '^curl [0-9]' <<< "$curl_version"
+          docker run --rm "$IMAGE" sh -c 'command -v git && command -v ssh'
           docker run --rm "$IMAGE" sh -c 'test -x /usr/local/bin/ngt && test -f /usr/local/lib/libngt.so'
           docker run --rm -i "$IMAGE" sh -c 'cat > /tmp/ngt-tls-smoke.go && CGO_ENABLED=1 go build -o /tmp/ngt-tls-smoke /tmp/ngt-tls-smoke.go && /tmp/ngt-tls-smoke' <<'GO'
           package main
