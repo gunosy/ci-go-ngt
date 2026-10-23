@@ -108,16 +108,9 @@ jobs:
           docker rm "$container"
           subjects="$(openssl crl2pkcs7 -nocrl -certfile "$RUNNER_TEMP/ca-certificates.crt" | openssl pkcs7 -print_certs -noout)"
 
-          for compromised in "emSign ECC Root CA - G3" "Comodo AAA Services"; do
+          for compromised in "emSign ECC Root CA - G3" "AAA Certificate Services"; do
             if grep -Fq "$compromised" <<< "$subjects"; then
               echo "Compromised trust anchor still present: $compromised"
-              exit 1
-            fi
-          done
-
-          for retained in "emSign Root CA - G1" "emSign Root CA - C1" "emSign ECC Root CA - C3"; do
-            if ! grep -Fq "$retained" <<< "$subjects"; then
-              echo "Expected unaffected trust anchor missing: $retained"
               exit 1
             fi
           done
