@@ -40,13 +40,11 @@ jobs:
       - run:
           name: Login to dockerhub
           command: docker login -u "$DOCKERHUB_USERNAME" -p "$DOCKERHUB_PASSWORD"
-      # 4) main ブランチを fetch して、変更のあった Dockerfile のみをビルド＆プッシュする
+      # 4) 直前のコミットから変更のあった Dockerfile のみをビルド＆プッシュする
       - run:
           name: Build and push docker image
           command: |
-            git fetch origin master
-
-            CHANGED_FILES=$(git diff --name-only origin/master..HEAD)
+            CHANGED_FILES=$(git diff --name-only HEAD^1 HEAD)
             DOCKERFILES=$(echo "$CHANGED_FILES" | grep "Dockerfile" || true)
 
             if [ -z "$DOCKERFILES" ]; then
@@ -59,8 +57,12 @@ jobs:
             for FILE in $DOCKERFILES; do
               TAG=$(dirname "$FILE")
               echo "Building ${TAG}..."
-              docker build -f $FILE . -t gunosy/ci-go-ngt:${TAG}
+              docker build --pull -f $FILE . -t gunosy/ci-go-ngt:${TAG}
               docker push gunosy/ci-go-ngt:${TAG}
+              if [ "$TAG" = "$(readlink latest)" ]; then
+                docker tag gunosy/ci-go-ngt:${TAG} gunosy/ci-go-ngt:latest
+                docker push gunosy/ci-go-ngt:latest
+              fi
             done
 
 workflows:
