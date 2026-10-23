@@ -1,13 +1,23 @@
-FROM golang:1.15
+FROM golang:1.15 AS go-toolchain
 
+FROM gunosy/ci-go:1.15 AS golangci-lint-tool
+
+FROM debian:bookworm-slim
+COPY --from=go-toolchain /usr/local/go /usr/local/go
+COPY --from=golangci-lint-tool /go/bin/golangci-lint /go/bin/golangci-lint
+
+ENV GOPATH=/go
+ENV PATH=/go/bin:/usr/local/go/bin:$PATH
+ENV GOLANG_VERSION=1.15.15
 ENV NGT_VERSION=1.12.1
 ENV GOLANGCI_LINT_VERSION=v1.27.0
 
-RUN apt --allow-releaseinfo-change update \
-  && apt install -y --no-install-recommends cmake make libssl-dev libghc-zlib-dev libcurl4-gnutls-dev libexpat1-dev gettext unzip git \
-  && apt clean \
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends build-essential ca-certificates cmake curl gettext git libcurl4-gnutls-dev libexpat1-dev libghc-zlib-dev libssl-dev unzip wget \
+  && update-ca-certificates --fresh \
+  && dpkg --compare-versions "$(dpkg-query -W -f='${Version}' ca-certificates)" ge '20250419~deb12u2' \
   && rm -rf /var/lib/apt/lists/* \
-  && mkdir -p /ngt \
+  && mkdir -p /go /ngt \
   && wget -P /ngt https://github.com/yahoojapan/NGT/archive/v${NGT_VERSION}.tar.gz \
   && tar xvf /ngt/v${NGT_VERSION}.tar.gz -C /ngt \
   && mkdir /ngt/NGT-${NGT_VERSION}/build \

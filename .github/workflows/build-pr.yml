@@ -1,0 +1,116 @@
+name: Build image PRs
+
+on:
+  pull_request:
+    branches:
+      - master
+    paths:
+      - 1.13/Dockerfile
+      - 1.14/Dockerfile
+      - 1.15/Dockerfile
+      - 1.16/Dockerfile
+      - 1.23/Dockerfile
+      - latest/Dockerfile
+      - .github/workflows/build-pr.yml
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - dockerfile: 1.13/Dockerfile
+            tag: 1.13
+            go_version_prefix: go1.13.15
+            golangci_lint_version: v1.25.1
+          - dockerfile: 1.14/Dockerfile
+            tag: 1.14
+            go_version_prefix: go1.14.12
+            golangci_lint_version: v1.27.0
+          - dockerfile: 1.15/Dockerfile
+            tag: 1.15
+            go_version_prefix: go1.15.5
+            golangci_lint_version: v1.27.0
+          - dockerfile: 1.16/Dockerfile
+            tag: 1.16
+            go_version_prefix: go1.15.15
+            golangci_lint_version: v1.27.0
+          - dockerfile: 1.23/Dockerfile
+            tag: 1.23
+            go_version_prefix: go1.23.
+            golangci_lint_version: v1.62.2
+          - dockerfile: latest/Dockerfile
+            tag: latest
+            go_version_prefix: go1.23.
+            golangci_lint_version: v1.62.2
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build without publishing
+        run: docker build --pull -f "${{ matrix.dockerfile }}" -t "ci-go-ngt:${{ matrix.tag }}" .
+      - name: Verify toolchain, linter, NGT linkage, and TLS
+        env:
+          IMAGE: ci-go-ngt:${{ matrix.tag }}
+          GO_VERSION_PREFIX: ${{ matrix.go_version_prefix }}
+          GOLANGCI_LINT_VERSION: ${{ matrix.golangci_lint_version }}
+        run: |
+          go_version="$(docker run --rm "$IMAGE" go version)"
+          grep -Fq "$GO_VERSION_PREFIX" <<< "$go_version"
+          linter_version="$(docker run --rm "$IMAGE" golangci-lint --version)"
+          grep -Fq "has version $GOLANGCI_LINT_VERSION" <<< "$linter_version"
+          curl_version="$(docker run --rm "$IMAGE" curl --version)"
+          grep -Eq '^curl [0-9]' <<< "$curl_version"
+          docker run --rm "$IMAGE" sh -c 'test -x /usr/local/bin/ngt && test -f /usr/local/lib/libngt.so'
+          docker run --rm -i "$IMAGE" sh -c 'cat > /tmp/ngt-tls-smoke.go && CGO_ENABLED=1 go build -o /tmp/ngt-tls-smoke /tmp/ngt-tls-smoke.go && /tmp/ngt-tls-smoke' <<'GO'
+          package main
+
+          /*
+          #cgo LDFLAGS: -L/usr/local/lib -lngt
+          #include <NGT/Capi.h>
+          */
+          import "C"
+
+          import (
+              "fmt"
+              "net/http"
+              "time"
+          )
+
+          func main() {
+              ngtError := C.ngt_create_error_object()
+              if ngtError == nil {
+                  panic("NGT error object was not created")
+              }
+              C.ngt_destroy_error_object(ngtError)
+
+              client := &http.Client{Timeout: 20 * time.Second}
+              response, err := client.Get("https://example.com/")
+              if err != nil {
+                  panic(err)
+              }
+              defer response.Body.Close()
+              if response.TLS == nil || response.StatusCode != http.StatusOK {
+                  panic(fmt.Sprintf("HTTPS request failed: status=%s tls=%v", response.Status, response.TLS != nil))
+              }
+              fmt.Printf("Go HTTPS succeeded with TLS 0x%04x and status %s\n", response.TLS.Version, response.Status)
+          }
+          GO
+      - name: Verify CA anchors in the built image
+        env:
+          IMAGE: ci-go-ngt:${{ matrix.tag }}
+        run: |
+          container="$(docker create "$IMAGE")"
+          trap 'docker rm -f "$container" >/dev/null 2>&1 || true' EXIT
+          docker cp "$container:/etc/ssl/certs/ca-certificates.crt" "$RUNNER_TEMP/ca-certificates.crt"
+          docker rm "$container"
+          subjects="$(openssl crl2pkcs7 -nocrl -certfile "$RUNNER_TEMP/ca-certificates.crt" | openssl pkcs7 -print_certs -noout)"
+
+          for compromised in "emSign ECC Root CA - G3" "AAA Certificate Services"; do
+            if grep -Fq "$compromised" <<< "$subjects"; then
+              echo "Compromised trust anchor still present: $compromised"
+              exit 1
+            fi
+          done
